@@ -26,7 +26,7 @@ using     std::cerr;
 
 //void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
-const float CUBEDIM = 6.0;
+
 
 class Triangle
 {
@@ -36,28 +36,48 @@ public:
     glm::vec3 v2;
 };
 
-const char* vert_shader =
+
+
+
+const char* frontQuad_vert_shader =
 "#version 400\n"
 "layout (location = 0) in vec3 vertex_position;\n"
-//"layout (location = 1) in vec3 vertex_normal;\n"
+"layout (location = 1) in vec3 vertex_normal;\n"
+"layout (location = 2) in vec3 vertex_color;\n"
 "uniform mat4 MVP;\n"
 "uniform vec3 cameraloc;\n"
 "uniform vec3 lightdir;\n"
 "uniform vec4 lightcoeff;\n"
 "out float shading_amount;\n"
+"out vec3 color;\n"
 "void main(){\n"
 "   vec4 position = vec4(vertex_position, 1.0);\n"
-"   gl_Position = position;\n"
+"   gl_Position = MVP*position;\n"
+"   color = vertex_color;\n"
+
+//perform the transforms
+"   shading_amount = lightcoeff.x;\n"
+"   vec3 norm_v = normalize(vertex_normal);\n"
+"   vec3 nlightdir = vec3(lightdir.x, sin(lightdir.y), lightdir.z);"
+"   shading_amount += lightcoeff.y * max(0.0, dot(nlightdir, norm_v));\n"
+"   vec3 R = normalize(2.0*dot(nlightdir, norm_v) * norm_v - nlightdir);\n"
+"   vec3 viewDir = normalize(cameraloc - vertex_position);\n"
+"   shading_amount += lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
 "}\n";
 
-//"   gl_Position = MVP*position;\n"
 
-const char* frag_shader =
+
+const char* frontQuad_frag_shader =
 "#version 400\n"
 "in float shading_amount;\n"
+"in vec3 color;\n"
 "out vec4 frag_color;\n"
 "void main(){\n"
-"   frag_color = vec4(0.0, 0.0, 0.0, 1.0);\n"
+"  frag_color = vec4(color, 1.0);\n"
+"  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
+"  frag_color.y = min(1.0, shading_amount*frag_color.y);\n"
+"  frag_color.z = min(1.0, shading_amount*frag_color.z);\n"
+"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
 "}\n";
 
 
@@ -102,55 +122,73 @@ GLFWwindow* SetUpWindow()
 }
 
 
-GLuint SetUpBox()
+GLuint SetUpFrontQuad()
 {
+
     float tri_points[] =
     {
-        //each line represents one triangle of each respective quad
-        /*
-        2, -2, -2, -2, 2 , -2, -2, -2, -2, //-z quad
-        2, -2, -2, -2, 2, -2, 2, 2, -2
-        */
-        
-       /* -6, 6, 6, -6, -6, 6, 6, 6, 6, //+z quad
-         6, -6, 6, -6, -6, 6, 6, 6, 6,*/
-
-          0.5f, 0.0f, 0.0f,
-          0.0f, 0.0f, 0.0f,
-          0.0f, 0.5f, 0.0f,
-          -0.5f, 0.0f, 0.0f
-        
+         0.5, -0.5, 0, //-z quad tri1
+        -0.5, 0.5 , 0,
+        -0.5, -0.5, 0,
+                 
+         0.5, -0.5, 0, //-z quad tri2
+        -0.5,  0.5, 0,
+         0.5,  0.5, 0
     };
 
     int tri_indices[] =
     {
-        0, 1, 2,
-        1, 2, 3
+        0, 
+        1, 
+        2,
+        0,
+        1,
+        5
+      
     };
+
+    float colors[] = { 1.0f, 0.0f, 0.0f,
+                       0.0f, 1.0f, 0.0f,
+                       0.0f, 0.0f, 1.0f,
+
+                       1.0f, 0.0f, 0.0f,
+                       0.0f, 1.0f, 0.0f,
+                       1.0f, 1.0f, 1.0f
+                        };
 
     //the vector pointing from each vertex to the origin is just (0,0,0) - vertex
     //so take the negative of each element of tri_points
     float tri_normals[18]
     {
-        -2, 2, 2, 2, -2 , 2, 2, 2, 2, //-z quad normals
-        -2, 2, 2, 2, -2, 2, -2, -2, 2
+        -0.5,  0.5,  0.5,
+         0.5, -0.5, 0.5,
+         0.5,  0.5,  0.5, //-z quad normals
+        
+        -0.5,  0.5, 0.5,
+         0.5, -0.5, 0.5,
+        -0.5, -0.5, 0.5
 
     };
 
     GLuint points_vbo = 0;
     glGenBuffers(1, &points_vbo);//get handle
     glBindBuffer(GL_ARRAY_BUFFER, points_vbo);//what type of data points works on GL_ARRAY_BUFFER type
-    glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float), tri_points, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), tri_points, GL_STATIC_DRAW);
 
     GLuint normals_vbo = 0;
     glGenBuffers(1, &normals_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, normals_vbo);
     glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), tri_normals, GL_STATIC_DRAW);
 
+    GLuint colors_vbo = 0;
+    glGenBuffers(1, &colors_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, colors_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), &colors[0], GL_STATIC_DRAW);
+
     GLuint indices_vbo = 0;
     glGenBuffers(1, &indices_vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_vbo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(int), tri_indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(int), &tri_indices[0], GL_STATIC_DRAW);
 
 
     GLuint vao = 0;
@@ -163,10 +201,14 @@ GLuint SetUpBox()
     glBindBuffer(GL_ARRAY_BUFFER, normals_vbo);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
+    glBindBuffer(GL_ARRAY_BUFFER, colors_vbo);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_vbo);
 
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
 
     return vao;
 
@@ -174,17 +216,10 @@ GLuint SetUpBox()
 
 }
 
-//A lot of the initialization code is borrowed from project2A
-int main()
-{   
-    GLFWwindow* window = SetUpWindow();
-    //glViewport(0, 0, 800, 800);
-
-    //set up data to render
-    GLuint vao = SetUpBox();
-
-    const char* vertex_shader = vert_shader;
-    const char* fragment_shader = frag_shader;
+GLuint SetUpFrontQuadShader(glm::vec3 origin, glm::vec3 up, glm::vec3 camera, glm::mat4 mvp)
+{
+    const char* vertex_shader =   frontQuad_vert_shader;
+    const char* fragment_shader = frontQuad_frag_shader;
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vertex_shader, NULL); //this tells gl that vertex_shader is the source and vs is where it goes
@@ -203,7 +238,7 @@ int main()
     glGetShaderiv(fs, GL_COMPILE_STATUS, &params);
     if (GL_TRUE != params) {
         fprintf(stderr, "ERROR: GL shader index %i did not compile\n", fs);
-       // _print_shader_info_log(fs);
+        // _print_shader_info_log(fs);
         exit(EXIT_FAILURE);
     }
 
@@ -214,16 +249,46 @@ int main()
 
     glUseProgram(shader_programme);
 
+    GLuint mvploc = glGetUniformLocation(shader_programme, "MVP");
+
+    //send transformation to the currently bound shader
+    glUniformMatrix4fv(mvploc, 1, GL_FALSE, &mvp[0][0]);
+
+    //SHADING PARAMETERS
+    GLuint camloc = glGetUniformLocation(shader_programme, "cameraloc");
+    glUniform3fv(camloc, 1, &camera[0]);
+
+    glm::vec3 lightdir = glm::normalize(camera - origin);
+    GLuint ldirloc = glGetUniformLocation(shader_programme, "lightdir");
+    glUniform3fv(ldirloc, 1, &lightdir[0]);
+
+    glm::vec4 lightcoeff(0.5, 0.2, 6, 50);
+    GLuint lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
+    glUniform4fv(lcoeloc, 1, &lightcoeff[0]);
+
+
+    return shader_programme;
+}
+
+//A lot of the initialization code is borrowed from project2A
+int main()
+{   
+    GLFWwindow* window = SetUpWindow();
+    //glViewport(0, 0, 800, 800);
+
+    //set up data to render
+    GLuint vao_FrontQuad = SetUpFrontQuad();
+
     //CAMERA TRANSFORMATIONS
     //projection matrix 
     //  fov:           30deg
     //  display size:  1000x1000
     //  display range: 5 <-> 200
     glm::mat4 Projection = glm::perspective(
-        glm::radians(30.0f), (float)800 / (float)800, 5.0f, 200.0f);
+        glm::radians(30.0f), (float)800 / (float)800, 1.0f, 200.0f);
     glm::vec3 origin(0, 0, 0);
     glm::vec3 up(0, 1, 0);
-    glm::vec3 camera(0, 0, -5);
+    glm::vec3 camera(0, 0, -3);
     //Camera matrix
     glm::mat4 View = glm::lookAt(
         camera, // camera in world space
@@ -233,30 +298,21 @@ int main()
     glm::mat4 Model = glm::mat4(1.0f);
     glm::mat4 mvp = Projection * View * Model;
 
-    GLuint mvploc = glGetUniformLocation(shader_programme, "MVP");
+    GLuint frontQuadShader_program = SetUpFrontQuadShader(origin, up, camera, mvp);
+
+   
+
 
     //send transformation to the currently bound shader
-    glUniformMatrix4fv(mvploc, 1, GL_FALSE, &mvp[0][0]);
-
-    //SHADING PARAMETERS
-    GLuint camloc = glGetUniformLocation(shader_programme, "cameraloc");
-    glUniform3fv(camloc, 1, &camera[0]);
-    glm::vec3 lightdir = glm::normalize(camera - origin);
-    GLuint ldirloc = glGetUniformLocation(shader_programme, "lightdir");
-    glUniform3fv(ldirloc, 1, &lightdir[0]);
-    
-    glm::vec4 lightcoeff(0.2, 0.5, 2, 50);
-    GLuint lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
-    glUniform4fv(lcoeloc, 1, &lightcoeff[0]);
 
     while (!glfwWindowShouldClose(window))
     {
-        glClearColor(1.0f, 1.0f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glBindVertexArray(vao);
-
+        glBindVertexArray(vao_FrontQuad);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
