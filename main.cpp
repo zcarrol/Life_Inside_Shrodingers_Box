@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <vector>
 #include "ShaderPrograms.h"
+#include "QuadData.h"
 
 using namespace std;
 using     std::endl;
@@ -23,7 +24,7 @@ using     std::cerr;
 #include <glm/glm/gtc/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
 
 GLFWwindow* SetUpWindow();
-GLuint SetUpFrontQuad();
+GLuint SetUpQuad();
 
 //void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -33,8 +34,11 @@ class RenderManager
 {
 public:
     RenderManager();
-    void SetView();
-    void SetUpFrontQuadShader();
+    void   SetView();
+    void   SetUpQuadShader(const char*, const char*);
+    GLuint SetUpQuad(float*, int*, float*, float*);
+    void   ModifyFqVar();
+    void   ModifyLqVar();
 
     GLFWwindow* window;
     glm::vec3 origin;
@@ -46,9 +50,14 @@ public:
     glm::mat4 Projection;
 
     //front quad data
-    GLuint vao_FrontQuad;
+    GLuint fQ_vao;
     GLuint fQ_lcoeloc;
     GLuint fQ_varloc;
+
+    //left quad data
+    GLuint lQ_vao;
+    GLuint lQ_lcoeloc;
+    GLuint lQ_varloc;
 
 };
 
@@ -61,7 +70,8 @@ RenderManager::RenderManager()
 
     Projection = glm::perspective(
         glm::radians(30.0f), (float)800 / (float)800, 1.0f, 200.0f);
-    vao_FrontQuad = SetUpFrontQuad();
+    fQ_vao = SetUpQuad(fQ_tri_points, fQ_tri_indices, fQ_colors, fQ_tri_normals);
+    lQ_vao = SetUpQuad(lQ_tri_points, lQ_tri_indices, lQ_colors, lQ_tri_normals);
 
     glm::mat4 View = glm::lookAt(
         camera, // camera in world space
@@ -74,10 +84,10 @@ RenderManager::RenderManager()
 
 }
 
-void RenderManager::SetUpFrontQuadShader()
+void RenderManager::SetUpQuadShader(const char* v, const char* f)
 {
-    const char* vertex_shader = frontQuad_vert_shader;
-    const char* fragment_shader = frontQuad_frag_shader;
+    const char* vertex_shader = v;
+    const char* fragment_shader = f;
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vertex_shader, NULL); //this tells gl that vertex_shader is the source and vs is where it goes
@@ -125,6 +135,17 @@ void RenderManager::SetUpFrontQuadShader()
     glUniform4fv(fQ_lcoeloc, 1, &lightcoeff[0]);
 
     fQ_varloc = glGetUniformLocation(shader_programme, "var");
+    
+    //each quad has its own variable whose value needs to be independant of the other quads
+    if (vertex_shader = frontQuad_vert_shader)
+        ModifyFqVar();
+
+    else if (vertex_shader = leftQuad_vert_shader)
+        ModifyLqVar();
+}
+
+void RenderManager::ModifyLqVar()
+{
     static GLfloat var = -0.1;
     static bool goingUp = true;
     if (var < 2 * M_PI && goingUp)
@@ -142,8 +163,36 @@ void RenderManager::SetUpFrontQuadShader()
         }
         var -= 0.01;
     }
+
+    glUniform1f(fQ_varloc, var);
+
+}
+
+
+void RenderManager::ModifyFqVar()
+{
+    static GLfloat var = -0.1;
+    static bool goingUp = true;
+    if (var < 2 * M_PI && goingUp)
+        var += 0.01;
+    else
+    {
+        if (var >= 2 * M_PI)
+        {
+            goingUp = false;
+        }
+        else if (var <= 0)
+        {
+            goingUp = true;
+            var = -0.1;
+        }
+        var -= 0.01;
+    }
+
     glUniform1f(fQ_varloc, var);
 }
+
+
 
 void RenderManager::SetView()
 {
@@ -158,7 +207,7 @@ void RenderManager::SetView()
     glUniform3fv(camloc, 1, &camera[0]);
 
     // Direction of light
-    glm::vec3 lightdir = glm::normalize(origin-camera);
+    glm::vec3 lightdir = glm::normalize(camera - origin);
     glUniform3fv(ldirloc, 1, &lightdir[0]);
 
     glm::mat4 Model = glm::mat4(1.0f);
@@ -200,53 +249,9 @@ GLFWwindow* SetUpWindow()
 }
 
 
-GLuint SetUpFrontQuad()
+GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colors, float* tri_normals)
 {
 
-    float tri_points[] =
-    {
-         0.5, -0.5, 0.5, //-z quad tri1
-        -0.5, 0.5 , 0.5,
-        -0.5, -0.5, 0.5,
-                 
-         0.5, -0.5, 0.5, //-z quad tri2
-        -0.5,  0.5, 0.5,
-         0.5,  0.5, 0.5
-    };
-
-    int tri_indices[] =
-    {
-        0, 
-        1, 
-        2,
-        0,
-        1,
-        5
-      
-    };
-
-    float colors[] = { 1.0f, 1.0f, 1.0f,
-                       1.0f, 1.0f, 1.0f,
-                       1.0f, 1.0f, 1.0f,
-
-                       1.0f, 1.0f, 1.0f,
-                       1.0f, 1.0f, 1.0f,
-                       1.0f, 1.0f, 1.0f
-                        };
-
-    //the vector pointing from each vertex to the origin is just (0,0,0) - vertex
-    //so take the negative of each element of tri_points
-    float tri_normals[18]
-    {
-        -0.5,  0.5,  0.5,
-         0.5, -0.5, 0.5,
-         0.5,  0.5,  0.5, //-z quad normals
-        
-        -0.5,  0.5, 0.5,
-         0.5, -0.5, 0.5,
-        -0.5, -0.5, 0.5
-
-    };
 
     GLuint points_vbo = 0;
     glGenBuffers(1, &points_vbo);//get handle
@@ -294,7 +299,6 @@ GLuint SetUpFrontQuad()
 
 }
 
-
 //A lot of the initialization code is borrowed from project2A
 int main()
 {   
@@ -310,13 +314,19 @@ int main()
         double angle = counter / 300.0 * 2 * M_PI;
         counter++;
 
-        rm.camera =glm::vec3( 2*sin(angle), 0, 2*cos(angle));
+        rm.camera =glm::vec3( 1.2*sin(angle*0.4), 0, 1.2*cos(angle*0.4));
         rm.SetView();
-        rm.SetUpFrontQuadShader();
+
+        //rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glBindVertexArray(rm.vao_FrontQuad);
+        
+        rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader);
+        glBindVertexArray(rm.fQ_vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+        
+        rm.SetUpQuadShader(leftQuad_vert_shader, leftQuad_frag_shader);
+        glBindVertexArray(rm.lQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
         glfwPollEvents();
