@@ -44,10 +44,12 @@ const char* frontQuad_vert_shader =
 "layout (location = 0) in vec3 vertex_position;\n"
 "layout (location = 1) in vec3 vertex_normal;\n"
 "layout (location = 2) in vec3 vertex_color;\n"
+"uniform float var;\n"
 "uniform mat4 MVP;\n"
 "uniform vec3 cameraloc;\n"
 "uniform vec3 lightdir;\n"
 "uniform vec4 lightcoeff;\n"
+"out float var_to_fs;\n"
 "out float shading_amount;\n"
 "out vec3 color;\n"
 "void main(){\n"
@@ -63,6 +65,7 @@ const char* frontQuad_vert_shader =
 "   vec3 R = normalize(2.0*dot(nlightdir, norm_v) * norm_v - nlightdir);\n"
 "   vec3 viewDir = normalize(cameraloc - vertex_position);\n"
 "   shading_amount += lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
+"   var_to_fs = var;\n"
 "}\n";
 
 
@@ -70,22 +73,16 @@ const char* frontQuad_vert_shader =
 const char* frontQuad_frag_shader =
 "#version 400\n"
 "in float shading_amount;\n"
+"in float var_to_fs;\n"
 "in vec3 color;\n"
 "out vec4 frag_color;\n"
 "void main(){\n"
 "  frag_color = vec4(color, 1.0);\n"
-"  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
-"  frag_color.y = min(1.0, shading_amount*frag_color.y);\n"
-"  frag_color.z = min(1.0, shading_amount*frag_color.z);\n"
-"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
+"  frag_color.x = min(1.0, max(0, var_to_fs*sin(shading_amount*frag_color.y)));\n"
+"  frag_color.y = min(1.0, shading_amount * frag_color.x); \n"    //"  frag_color.y = min(1.0, max(0.5,sin(var_to_fs*shading_amount*frag_color.y)));\n"
+"  frag_color.z = min(1.0, shading_amount*frag_color.z);\n" //"  frag_color.z = min(1.0, max(0.2,sin(var_to_fs*shading_amount*frag_color.z)));\n"
+//"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
 "}\n";
-
-
-class Quad
-{
-public:
-    vector<Triangle> face; //cube is made up of 4 visible sides possible 6 for top and bottom
-};
 
 
 
@@ -266,6 +263,26 @@ GLuint SetUpFrontQuadShader(glm::vec3 origin, glm::vec3 up, glm::vec3 camera, gl
     GLuint lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
     glUniform4fv(lcoeloc, 1, &lightcoeff[0]);
 
+    GLuint varloc = glGetUniformLocation(shader_programme,"var");
+    static GLfloat var = -0.1;
+    static bool goingUp = true;
+    if (var < 2 * M_PI && goingUp)
+        var += 0.01;
+    else
+    {
+        if (var >= 2 * M_PI)
+        {
+            goingUp = false;
+        }
+        else if (var <= 0)
+        {
+            goingUp = true;
+            var = -0.1;
+        }
+        var -= 0.01;
+    }
+    glUniform1f(varloc, var);
+
 
     return shader_programme;
 }
@@ -298,7 +315,7 @@ int main()
     glm::mat4 Model = glm::mat4(1.0f);
     glm::mat4 mvp = Projection * View * Model;
 
-    GLuint frontQuadShader_program = SetUpFrontQuadShader(origin, up, camera, mvp);
+    
 
    
 
@@ -307,6 +324,7 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        GLuint frontQuadShader_program = SetUpFrontQuadShader(origin, up, camera, mvp);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
