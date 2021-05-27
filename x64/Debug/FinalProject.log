@@ -1,6 +1,6 @@
 ﻿  main.cpp
-C:\GL\FinalProject\main.cpp(249,30): warning C4305: 'initializing': truncation from 'double' to 'GLfloat'
-C:\GL\FinalProject\main.cpp(252,20): warning C4305: '+=': truncation from 'double' to 'GLfloat'
-C:\GL\FinalProject\main.cpp(262,23): warning C4305: '=': truncation from 'double' to 'GLfloat'
-C:\GL\FinalProject\main.cpp(264,20): warning C4305: '-=': truncation from 'double' to 'GLfloat'
+C:\GL\FinalProject\main.cpp(128,30): warning C4305: 'initializing': truncation from 'double' to 'GLfloat'
+C:\GL\FinalProject\main.cpp(131,20): warning C4305: '+=': truncation from 'double' to 'GLfloat'
+C:\GL\FinalProject\main.cpp(141,23): warning C4305: '=': truncation from 'double' to 'GLfloat'
+C:\GL\FinalProject\main.cpp(143,20): warning C4305: '-=': truncation from 'double' to 'GLfloat'
   FinalProject.vcxproj -> C:\GL\FinalProject\x64\Debug\FinalProject.exe

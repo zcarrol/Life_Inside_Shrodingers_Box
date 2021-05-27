@@ -41,7 +41,14 @@ public:
     glm::vec3 up;
     glm::vec3 camera;
     glm::mat4 mvp;
+    GLuint camloc;
+    GLuint ldirloc;
+    glm::mat4 Projection;
+
+    //front quad data
     GLuint vao_FrontQuad;
+    GLuint fQ_lcoeloc;
+    GLuint fQ_varloc;
 
 };
 
@@ -50,9 +57,9 @@ RenderManager::RenderManager()
     window = SetUpWindow();
     origin = glm::vec3(0, 0, 0);
     up =     glm::vec3(0, 1, 0);
-    camera = glm::vec3(0, 0, -3);
+    camera = glm::vec3(0, 0, -2);
 
-    glm::mat4 Projection = glm::perspective(
+    Projection = glm::perspective(
         glm::radians(30.0f), (float)800 / (float)800, 1.0f, 200.0f);
     vao_FrontQuad = SetUpFrontQuad();
 
@@ -67,6 +74,98 @@ RenderManager::RenderManager()
 
 }
 
+void RenderManager::SetUpFrontQuadShader()
+{
+    const char* vertex_shader = frontQuad_vert_shader;
+    const char* fragment_shader = frontQuad_frag_shader;
+
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &vertex_shader, NULL); //this tells gl that vertex_shader is the source and vs is where it goes
+    glCompileShader(vs);
+    int params = -1;
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &params); //did it compile?
+    if (GL_TRUE != params) {
+        fprintf(stderr, "ERROR: GL shader index %i did not compile\n", vs);
+        //_print_shader_info_log(vs);
+        exit(EXIT_FAILURE);
+    }
+
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &fragment_shader, NULL);
+    glCompileShader(fs);
+    glGetShaderiv(fs, GL_COMPILE_STATUS, &params);
+    if (GL_TRUE != params) {
+        fprintf(stderr, "ERROR: GL shader index %i did not compile\n", fs);
+        // _print_shader_info_log(fs);
+        exit(EXIT_FAILURE);
+    }
+
+    GLuint shader_programme = glCreateProgram();
+    glAttachShader(shader_programme, fs); //i intend to attach fs
+    glAttachShader(shader_programme, vs); //i intend to attach vs
+    glLinkProgram(shader_programme); //this means as prog executing it will use this shader
+
+    glUseProgram(shader_programme);
+
+    GLuint mvploc = glGetUniformLocation(shader_programme, "MVP");
+
+    //send transformation to the currently bound shader
+    glUniformMatrix4fv(mvploc, 1, GL_FALSE, &mvp[0][0]);
+
+    //SHADING PARAMETERS
+    camloc = glGetUniformLocation(shader_programme, "cameraloc");
+    glUniform3fv(camloc, 1, &camera[0]);
+
+    glm::vec3 lightdir = glm::normalize(origin - camera);
+    ldirloc = glGetUniformLocation(shader_programme, "lightdir");
+    glUniform3fv(ldirloc, 1, &lightdir[0]);
+
+    glm::vec4 lightcoeff(0.2, 0.4, 0.6, 50);
+    fQ_lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
+    glUniform4fv(fQ_lcoeloc, 1, &lightcoeff[0]);
+
+    fQ_varloc = glGetUniformLocation(shader_programme, "var");
+    static GLfloat var = -0.1;
+    static bool goingUp = true;
+    if (var < 2 * M_PI && goingUp)
+        var += 0.01;
+    else
+    {
+        if (var >= 2 * M_PI)
+        {
+            goingUp = false;
+        }
+        else if (var <= 0)
+        {
+            goingUp = true;
+            var = -0.1;
+        }
+        var -= 0.01;
+    }
+    glUniform1f(fQ_varloc, var);
+}
+
+void RenderManager::SetView()
+{
+    glm::mat4 v = glm::lookAt(
+        camera, // Camera in world space
+        origin, // looks at the origin
+        up      // and the head is up
+    );
+    //view = v;
+
+    //this function is used to load a uniform variable of type vec3
+    glUniform3fv(camloc, 1, &camera[0]);
+
+    // Direction of light
+    glm::vec3 lightdir = glm::normalize(origin-camera);
+    glUniform3fv(ldirloc, 1, &lightdir[0]);
+
+    glm::mat4 Model = glm::mat4(1.0f);
+
+    mvp = Projection * v * Model;
+
+}
 
 GLFWwindow* SetUpWindow()
 {
@@ -81,7 +180,7 @@ GLFWwindow* SetUpWindow()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Beginning", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 800, "Life inside Shrodinger's box", NULL, NULL);
     if (window == NULL)
     {
         cout << "Failed to create GLFW window" << endl;
@@ -106,13 +205,13 @@ GLuint SetUpFrontQuad()
 
     float tri_points[] =
     {
-         0.5, -0.5, 0, //-z quad tri1
-        -0.5, 0.5 , 0,
-        -0.5, -0.5, 0,
+         0.5, -0.5, 0.5, //-z quad tri1
+        -0.5, 0.5 , 0.5,
+        -0.5, -0.5, 0.5,
                  
-         0.5, -0.5, 0, //-z quad tri2
-        -0.5,  0.5, 0,
-         0.5,  0.5, 0
+         0.5, -0.5, 0.5, //-z quad tri2
+        -0.5,  0.5, 0.5,
+         0.5,  0.5, 0.5
     };
 
     int tri_indices[] =
@@ -195,76 +294,6 @@ GLuint SetUpFrontQuad()
 
 }
 
-void RenderManager::SetUpFrontQuadShader()
-{
-    const char* vertex_shader = frontQuad_vert_shader;
-    const char* fragment_shader = frontQuad_frag_shader;
-
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vertex_shader, NULL); //this tells gl that vertex_shader is the source and vs is where it goes
-    glCompileShader(vs);
-    int params = -1;
-    glGetShaderiv(vs, GL_COMPILE_STATUS, &params); //did it compile?
-    if (GL_TRUE != params) {
-        fprintf(stderr, "ERROR: GL shader index %i did not compile\n", vs);
-        //_print_shader_info_log(vs);
-        exit(EXIT_FAILURE);
-    }
-
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fragment_shader, NULL);
-    glCompileShader(fs);
-    glGetShaderiv(fs, GL_COMPILE_STATUS, &params);
-    if (GL_TRUE != params) {
-        fprintf(stderr, "ERROR: GL shader index %i did not compile\n", fs);
-        // _print_shader_info_log(fs);
-        exit(EXIT_FAILURE);
-    }
-
-    GLuint shader_programme = glCreateProgram();
-    glAttachShader(shader_programme, fs); //i intend to attach fs
-    glAttachShader(shader_programme, vs); //i intend to attach vs
-    glLinkProgram(shader_programme); //this means as prog executing it will use this shader
-
-    glUseProgram(shader_programme);
-
-    GLuint mvploc = glGetUniformLocation(shader_programme, "MVP");
-
-    //send transformation to the currently bound shader
-    glUniformMatrix4fv(mvploc, 1, GL_FALSE, &mvp[0][0]);
-
-    //SHADING PARAMETERS
-    GLuint camloc = glGetUniformLocation(shader_programme, "cameraloc");
-    glUniform3fv(camloc, 1, &camera[0]);
-
-    glm::vec3 lightdir = glm::normalize(origin - glm::vec3(2,0,-3));
-    GLuint ldirloc = glGetUniformLocation(shader_programme, "lightdir");
-    glUniform3fv(ldirloc, 1, &lightdir[0]);
-
-    glm::vec4 lightcoeff(0.2, 0.4, 0.6, 50);
-    GLuint lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
-    glUniform4fv(lcoeloc, 1, &lightcoeff[0]);
-
-    GLuint varloc = glGetUniformLocation(shader_programme,"var");
-    static GLfloat var = -0.1;
-    static bool goingUp = true;
-    if (var < 2 * M_PI && goingUp)
-        var += 0.01;
-    else
-    {
-        if (var >= 2 * M_PI)
-        {
-            goingUp = false;
-        }
-        else if (var <= 0)
-        {
-            goingUp = true;
-            var = -0.1;
-        }
-        var -= 0.01;
-    }
-    glUniform1f(varloc, var);
-}
 
 //A lot of the initialization code is borrowed from project2A
 int main()
@@ -272,8 +301,17 @@ int main()
 
     RenderManager rm;
 
+    double angle = 0;
+
+    int counter = 0;
+
     while (!glfwWindowShouldClose(rm.window))
-    {
+    {   
+        double angle = counter / 300.0 * 2 * M_PI;
+        counter++;
+
+        rm.camera =glm::vec3( 2*sin(angle), 0, 2*cos(angle));
+        rm.SetView();
         rm.SetUpFrontQuadShader();
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
