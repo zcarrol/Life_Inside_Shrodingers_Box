@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include "ShaderPrograms.h"
 
 using namespace std;
 using     std::endl;
@@ -21,69 +22,50 @@ using     std::cerr;
 #include <glm/glm/gtc/type_ptr.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
 
-//class RenderManager;
-
+GLFWwindow* SetUpWindow();
+GLuint SetUpFrontQuad();
 
 //void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 
 
-class Triangle
+class RenderManager
 {
 public:
-    glm::vec3 v0;
-    glm::vec3 v1;
-    glm::vec3 v2;
+    RenderManager();
+    void SetView();
+    void SetUpFrontQuadShader();
+
+    GLFWwindow* window;
+    glm::vec3 origin;
+    glm::vec3 up;
+    glm::vec3 camera;
+    glm::mat4 mvp;
+    GLuint vao_FrontQuad;
+
 };
 
+RenderManager::RenderManager()
+{
+    window = SetUpWindow();
+    origin = glm::vec3(0, 0, 0);
+    up =     glm::vec3(0, 1, 0);
+    camera = glm::vec3(0, 0, -3);
 
+    glm::mat4 Projection = glm::perspective(
+        glm::radians(30.0f), (float)800 / (float)800, 1.0f, 200.0f);
+    vao_FrontQuad = SetUpFrontQuad();
 
+    glm::mat4 View = glm::lookAt(
+        camera, // camera in world space
+        origin, // looks at the origin
+        up      // and the head is up
+    );
+    glm::mat4 Model = glm::mat4(1.0f);
 
-const char* frontQuad_vert_shader =
-"#version 400\n"
-"layout (location = 0) in vec3 vertex_position;\n"
-"layout (location = 1) in vec3 vertex_normal;\n"
-"layout (location = 2) in vec3 vertex_color;\n"
-"uniform float var;\n"
-"uniform mat4 MVP;\n"
-"uniform vec3 cameraloc;\n"
-"uniform vec3 lightdir;\n"
-"uniform vec4 lightcoeff;\n"
-"out float var_to_fs;\n"
-"out float shading_amount;\n"
-"out vec3 color;\n"
-"void main(){\n"
-"   vec4 position = vec4(vertex_position, 1.0);\n"
-"   gl_Position = MVP*position;\n"
-"   color = vertex_color;\n"
+    mvp = Projection * View * Model;
 
-//perform the transforms
-"   shading_amount = lightcoeff.x;\n"
-"   vec3 norm_v = normalize(vertex_normal);\n"
-"   vec3 nlightdir = vec3(lightdir.x, sin(lightdir.y), lightdir.z);"
-"   shading_amount += lightcoeff.y * max(0.0, dot(nlightdir, norm_v));\n"
-"   vec3 R = normalize(2.0*dot(nlightdir, norm_v) * norm_v - nlightdir);\n"
-"   vec3 viewDir = normalize(cameraloc - vertex_position);\n"
-"   shading_amount += lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
-"   var_to_fs = var;\n"
-"}\n";
-
-
-
-const char* frontQuad_frag_shader =
-"#version 400\n"
-"in float shading_amount;\n"
-"in float var_to_fs;\n"
-"in vec3 color;\n"
-"out vec4 frag_color;\n"
-"void main(){\n"
-"  frag_color = vec4(color, 1.0);\n"
-"  frag_color.x = min(1.0, max(0, var_to_fs*sin(shading_amount*frag_color.y)));\n"
-"  frag_color.y = min(1.0, shading_amount * frag_color.x); \n"    //"  frag_color.y = min(1.0, max(0.5,sin(var_to_fs*shading_amount*frag_color.y)));\n"
-"  frag_color.z = min(1.0, shading_amount*frag_color.z);\n" //"  frag_color.z = min(1.0, max(0.2,sin(var_to_fs*shading_amount*frag_color.z)));\n"
-//"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
-"}\n";
-
+}
 
 
 GLFWwindow* SetUpWindow()
@@ -144,12 +126,12 @@ GLuint SetUpFrontQuad()
       
     };
 
-    float colors[] = { 1.0f, 0.0f, 0.0f,
-                       0.0f, 1.0f, 0.0f,
-                       0.0f, 0.0f, 1.0f,
+    float colors[] = { 1.0f, 1.0f, 1.0f,
+                       1.0f, 1.0f, 1.0f,
+                       1.0f, 1.0f, 1.0f,
 
-                       1.0f, 0.0f, 0.0f,
-                       0.0f, 1.0f, 0.0f,
+                       1.0f, 1.0f, 1.0f,
+                       1.0f, 1.0f, 1.0f,
                        1.0f, 1.0f, 1.0f
                         };
 
@@ -213,9 +195,9 @@ GLuint SetUpFrontQuad()
 
 }
 
-GLuint SetUpFrontQuadShader(glm::vec3 origin, glm::vec3 up, glm::vec3 camera, glm::mat4 mvp)
+void RenderManager::SetUpFrontQuadShader()
 {
-    const char* vertex_shader =   frontQuad_vert_shader;
+    const char* vertex_shader = frontQuad_vert_shader;
     const char* fragment_shader = frontQuad_frag_shader;
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -255,11 +237,11 @@ GLuint SetUpFrontQuadShader(glm::vec3 origin, glm::vec3 up, glm::vec3 camera, gl
     GLuint camloc = glGetUniformLocation(shader_programme, "cameraloc");
     glUniform3fv(camloc, 1, &camera[0]);
 
-    glm::vec3 lightdir = glm::normalize(camera - origin);
+    glm::vec3 lightdir = glm::normalize(origin - glm::vec3(2,0,-3));
     GLuint ldirloc = glGetUniformLocation(shader_programme, "lightdir");
     glUniform3fv(ldirloc, 1, &lightdir[0]);
 
-    glm::vec4 lightcoeff(0.5, 0.2, 6, 50);
+    glm::vec4 lightcoeff(0.2, 0.4, 0.6, 50);
     GLuint lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
     glUniform4fv(lcoeloc, 1, &lightcoeff[0]);
 
@@ -282,60 +264,28 @@ GLuint SetUpFrontQuadShader(glm::vec3 origin, glm::vec3 up, glm::vec3 camera, gl
         var -= 0.01;
     }
     glUniform1f(varloc, var);
-
-
-    return shader_programme;
 }
 
 //A lot of the initialization code is borrowed from project2A
 int main()
 {   
-    GLFWwindow* window = SetUpWindow();
-    //glViewport(0, 0, 800, 800);
 
-    //set up data to render
-    GLuint vao_FrontQuad = SetUpFrontQuad();
+    RenderManager rm;
 
-    //CAMERA TRANSFORMATIONS
-    //projection matrix 
-    //  fov:           30deg
-    //  display size:  1000x1000
-    //  display range: 5 <-> 200
-    glm::mat4 Projection = glm::perspective(
-        glm::radians(30.0f), (float)800 / (float)800, 1.0f, 200.0f);
-    glm::vec3 origin(0, 0, 0);
-    glm::vec3 up(0, 1, 0);
-    glm::vec3 camera(0, 0, -3);
-    //Camera matrix
-    glm::mat4 View = glm::lookAt(
-        camera, // camera in world space
-        origin, // looks at the origin
-        up      // and the head is up
-    );
-    glm::mat4 Model = glm::mat4(1.0f);
-    glm::mat4 mvp = Projection * View * Model;
-
-    
-
-   
-
-
-    //send transformation to the currently bound shader
-
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(rm.window))
     {
-        GLuint frontQuadShader_program = SetUpFrontQuadShader(origin, up, camera, mvp);
+        rm.SetUpFrontQuadShader();
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glBindVertexArray(vao_FrontQuad);
+        glBindVertexArray(rm.vao_FrontQuad);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
         glfwPollEvents();
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(rm.window);
     }
 
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(rm.window);
     glfwTerminate();
     return 0;
 }
