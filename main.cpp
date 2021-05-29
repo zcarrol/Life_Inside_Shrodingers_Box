@@ -39,6 +39,8 @@ public:
     GLuint SetUpQuad(float*, int*, float*, float*);
     void   ModifyFqVar();
     void   ModifyLqVar();
+    void   ModifyBqVar();
+    void   ModifyRqVar();
 
     GLFWwindow* window;
     glm::vec3 origin;
@@ -59,6 +61,17 @@ public:
     GLuint lQ_lcoeloc;
     GLuint lQ_varloc;
 
+    //back quad data
+    GLuint bQ_vao;
+    GLuint bQ_lcoeloc;
+    GLuint bQ_varloc;
+
+    //right quad data
+    GLuint rQ_vao;
+    GLuint rQ_lcoeloc;
+    GLuint rQ_varloc;
+
+
 };
 
 RenderManager::RenderManager()
@@ -66,12 +79,14 @@ RenderManager::RenderManager()
     window = SetUpWindow();
     origin = glm::vec3(0, 0, 0);
     up =     glm::vec3(0, 1, 0);
-    camera = glm::vec3(0, 0, -2);
+    camera = glm::vec3(0, 0, 0);
 
     Projection = glm::perspective(
-        glm::radians(30.0f), (float)800 / (float)800, 1.0f, 200.0f);
+        glm::radians(45.0f), (float)800 / (float)800, 1.0f, 200.0f);
     fQ_vao = SetUpQuad(fQ_tri_points, fQ_tri_indices, fQ_colors, fQ_tri_normals);
     lQ_vao = SetUpQuad(lQ_tri_points, lQ_tri_indices, lQ_colors, lQ_tri_normals);
+    bQ_vao = SetUpQuad(bQ_tri_points, bQ_tri_indices, bQ_colors, bQ_tri_normals);
+    rQ_vao = SetUpQuad(rQ_tri_points, rQ_tri_indices, rQ_colors, rQ_tri_normals);
 
     glm::mat4 View = glm::lookAt(
         camera, // camera in world space
@@ -142,6 +157,61 @@ void RenderManager::SetUpQuadShader(const char* v, const char* f)
 
     else if (vertex_shader = leftQuad_vert_shader)
         ModifyLqVar();
+
+    else if (vertex_shader = backQuad_vert_shader)
+        ModifyBqVar();
+
+    else if (vertex_shader = rightQuad_vert_shader)
+        ModifyRqVar();
+}
+
+void RenderManager::ModifyRqVar()
+{
+    static GLfloat var = -0.1;
+    static bool goingUp = true;
+    if (var < 2 * M_PI && goingUp)
+        var += 0.01;
+    else
+    {
+        if (var >= 2 * M_PI)
+        {
+            goingUp = false;
+        }
+        else if (var <= 0)
+        {
+            goingUp = true;
+            var = -0.1;
+        }
+        var -= 0.01;
+    }
+
+    glUniform1f(rQ_varloc, var);
+
+
+}
+
+void RenderManager::ModifyBqVar()
+{
+    static GLfloat var = -0.1;
+    static bool goingUp = true;
+    if (var < 2 * M_PI && goingUp)
+        var += 0.01;
+    else
+    {
+        if (var >= 2 * M_PI)
+        {
+            goingUp = false;
+        }
+        else if (var <= 0)
+        {
+            goingUp = true;
+            var = -0.1;
+        }
+        var -= 0.01;
+    }
+
+    glUniform1f(bQ_varloc, var);
+
 }
 
 void RenderManager::ModifyLqVar()
@@ -164,7 +234,7 @@ void RenderManager::ModifyLqVar()
         var -= 0.01;
     }
 
-    glUniform1f(fQ_varloc, var);
+    glUniform1f(lQ_varloc, var);
 
 }
 
@@ -207,7 +277,7 @@ void RenderManager::SetView()
     glUniform3fv(camloc, 1, &camera[0]);
 
     // Direction of light
-    glm::vec3 lightdir = glm::normalize(camera - origin);
+    glm::vec3 lightdir = glm::normalize(origin - camera);
     glUniform3fv(ldirloc, 1, &lightdir[0]);
 
     glm::mat4 Model = glm::mat4(1.0f);
@@ -314,10 +384,9 @@ int main()
         double angle = counter / 300.0 * 2 * M_PI;
         counter++;
 
-        rm.camera =glm::vec3( 1.2*sin(angle*0.4), 0, 1.2*cos(angle*0.4));
+        rm.camera = glm::vec3( sin(angle*0.2), rm.camera.y, cos(angle*0.2));
         rm.SetView();
 
-        //rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
@@ -327,6 +396,14 @@ int main()
         
         rm.SetUpQuadShader(leftQuad_vert_shader, leftQuad_frag_shader);
         glBindVertexArray(rm.lQ_vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+
+        rm.SetUpQuadShader(backQuad_vert_shader, backQuad_frag_shader);
+        glBindVertexArray(rm.bQ_vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+
+        rm.SetUpQuadShader(rightQuad_vert_shader, rightQuad_frag_shader);
+        glBindVertexArray(rm.rQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
         glfwPollEvents();
