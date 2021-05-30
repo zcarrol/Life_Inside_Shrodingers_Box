@@ -144,12 +144,12 @@ const char* backQuad_frag_shader =
 "in vec2 tex_Coord;\n"
 "out vec4 frag_color;\n"
 "void main(){\n"
-"  frag_color = texture(ourTexture, tex_Coord)*shading_amount;\n"
+"  frag_color = texture(ourTexture, tex_Coord);\n"
 
-"  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
+/*"  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
 "  frag_color.y = min(1.0, shading_amount*frag_color.y); \n"
 "  frag_color.z = min(1.0, shading_amount*frag_color.z);\n"
-"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
+"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"*/
 "}\n";
 
 const char* rightQuad_vert_shader =

@@ -1,4 +1,8 @@
+
 #define _USE_MATH_DEFINES
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+//#include "SOIL/include/SOIL/SOIL.h"
 #include <cmath>
 #include <iostream>
 #include <stdio.h>
@@ -23,11 +27,8 @@ using     std::cerr;
 #include <glm/glm/gtc/type_ptr.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 GLFWwindow* SetUpWindow();
-GLuint SetUpQuad();
+GLuint GenerateTexture();
 
 //void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -38,8 +39,8 @@ class RenderManager
 public:
     RenderManager();
     void   SetView();
-    void   SetUpQuadShader(const char*, const char*, GLuint);
-    GLuint SetUpQuad(float*, int*, float*, float*);
+    void   SetUpQuadShader(const char*, const char*, GLuint, GLuint, GLuint, GLuint);
+    GLuint SetUpQuad(float*, int*, float*, float*, GLuint);
     void   ModifyFqVar();
     void   ModifyLqVar();
     void   ModifyBqVar();
@@ -53,27 +54,31 @@ public:
     GLuint camloc;
     GLuint ldirloc;
     glm::mat4 Projection;
-    GLuint texture1;
+    //GLuint texture1;
 
     //front quad data
     GLuint fQ_vao;
     GLuint fQ_lcoeloc;
     GLuint fQ_varloc;
+    GLuint fQ_texture;
 
     //left quad data
     GLuint lQ_vao;
     GLuint lQ_lcoeloc;
     GLuint lQ_varloc;
+    GLuint lQ_texture;
 
     //back quad data
     GLuint bQ_vao;
     GLuint bQ_lcoeloc;
     GLuint bQ_varloc;
+    GLuint bQ_texture;
 
     //right quad data
     GLuint rQ_vao;
     GLuint rQ_lcoeloc;
     GLuint rQ_varloc;
+    GLuint rQ_texture;
 
 
 };
@@ -85,12 +90,17 @@ RenderManager::RenderManager()
     up =     glm::vec3(0, 1, 0);
     camera = glm::vec3(0, 0, 0);
 
+    rQ_texture = 0;
+    lQ_texture = 0;
+    bQ_texture = 0;
+    fQ_texture = 0;
+
     Projection = glm::perspective(
         glm::radians(45.0f), (float)800 / (float)800, 1.0f, 200.0f);
-    fQ_vao = SetUpQuad(fQ_tri_points, fQ_tri_indices, fQ_colors, fQ_tri_normals);
-    lQ_vao = SetUpQuad(lQ_tri_points, lQ_tri_indices, lQ_colors, lQ_tri_normals);
-    bQ_vao = SetUpQuad(bQ_tri_points, bQ_tri_indices, bQ_colors, bQ_tri_normals);
-    rQ_vao = SetUpQuad(rQ_tri_points, rQ_tri_indices, rQ_colors, rQ_tri_normals);
+    fQ_vao = SetUpQuad(fQ_tri_points, fQ_tri_indices, fQ_colors, fQ_tri_normals, fQ_texture);
+    //lQ_vao = SetUpQuad(lQ_tri_points, lQ_tri_indices, lQ_colors, lQ_tri_normals, lQ_texture);
+    //bQ_vao = SetUpQuad(bQ_tri_points, bQ_tri_indices, bQ_colors, bQ_tri_normals, bQ_texture);
+    //rQ_vao = SetUpQuad(rQ_tri_points, rQ_tri_indices, rQ_colors, rQ_tri_normals, rQ_texture);
 
     glm::mat4 View = glm::lookAt(
         camera, // camera in world space
@@ -105,13 +115,10 @@ RenderManager::RenderManager()
 
 }
 
-void RenderManager::SetUpQuadShader(const char* v, const char* f, GLuint vao)
+void RenderManager::SetUpQuadShader(const char* v, const char* f, GLuint vao, GLuint texture, GLuint lcoeloc, GLuint varloc)
 {
     const char* vertex_shader = v;
     const char* fragment_shader = f;
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture1);
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vertex_shader, NULL); //this tells gl that vertex_shader is the source and vs is where it goes
@@ -156,11 +163,19 @@ void RenderManager::SetUpQuadShader(const char* v, const char* f, GLuint vao)
     glUniform3fv(ldirloc, 1, &lightdir[0]);
 
     glm::vec4 lightcoeff(0.8, 0.4, 0.6, 50);
-    fQ_lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
-    glUniform4fv(fQ_lcoeloc, 1, &lightcoeff[0]);
+    lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
+    glUniform4fv(lcoeloc, 1, &lightcoeff[0]);
 
-    fQ_varloc = glGetUniformLocation(shader_programme, "var");
+    varloc = glGetUniformLocation(shader_programme, "var");
     
+    //texture = GenerateTexture();
+
+    /*
+    GLuint texcoord = glGetAttribLocation(shader_programme, "texCoord");
+    glVertexAttribPointer(texcoord, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+    glEnableVertexAttribArray(texcoord);*/
+    
+
     //each quad has its own variable whose value needs to be independant of the other quads
     if (vertex_shader = frontQuad_vert_shader)
         ModifyFqVar();
@@ -173,6 +188,7 @@ void RenderManager::SetUpQuadShader(const char* v, const char* f, GLuint vao)
 
     else if (vertex_shader = rightQuad_vert_shader)
         ModifyRqVar();
+
 }
 
 GLuint GenerateTexture()
@@ -180,31 +196,39 @@ GLuint GenerateTexture()
     // load and generate the texture
     GLuint texture = 0;
     glGenTextures(1, &texture);
-    glActiveTexture(GL_TEXTURE0);
     //how many textures and where we want to store them
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
-    //texture wrapping
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
- 
-    //texture filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     int width, height, nrChannels;
     //load image data
-    unsigned char* data = stbi_load("Libraries/include/lightning.png", &width, &height, &nrChannels, 0);
+   
+    unsigned char* data = stbi_load("Libraries/include/waterRipple.png", &width, &height, &nrChannels, 0);
+
     if (data)
-    {
+    {   
+        cerr << width << "x" << height << endl;
         //after this call the currently bound texture object now has the texture image attached to it
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
+        
     }
     else
     {
         cout << "Failed to load texture" << endl;
     }
     stbi_image_free(data);
+    
+
+    //texture wrapping
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    //texture filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glUniform1i(texture,  0);
+
     
     return texture;
 }
@@ -282,7 +306,6 @@ void RenderManager::ModifyLqVar()
 
 }
 
-
 void RenderManager::ModifyFqVar()
 {
     static GLfloat var = -0.1;
@@ -305,8 +328,6 @@ void RenderManager::ModifyFqVar()
 
     glUniform1f(fQ_varloc, var);
 }
-
-
 
 void RenderManager::SetView()
 {
@@ -363,7 +384,7 @@ GLFWwindow* SetUpWindow()
 }
 
 
-GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colors, float* tri_normals)
+GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colors, float* tri_normals, GLuint texture)
 {
 
     GLuint points_vbo = 0;
@@ -381,6 +402,10 @@ GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colo
     glBindBuffer(GL_ARRAY_BUFFER, colors_vbo);
     glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), &colors[0], GL_STATIC_DRAW);
 
+    GLuint texcoord_vbo = 0;
+    glGenBuffers(1, &texcoord_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, texcoord_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float), &fQ_tri_texData[0], GL_STATIC_DRAW);
 
     GLuint indices_vbo = 0;
     glGenBuffers(1, &indices_vbo);
@@ -401,7 +426,8 @@ GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colo
     glBindBuffer(GL_ARRAY_BUFFER, colors_vbo);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
-    texture1 = GenerateTexture();
+    texture = GenerateTexture();
+    glBindBuffer(GL_ARRAY_BUFFER, texcoord_vbo);
     glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_vbo);
@@ -411,11 +437,7 @@ GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colo
     glEnableVertexAttribArray(2);
     glEnableVertexAttribArray(3);
 
-
     return vao;
-
-
-
 }
 
 //A lot of the initialization code is borrowed from project2A
@@ -428,6 +450,7 @@ int main()
 
     int counter = 0;
 
+
     while (!glfwWindowShouldClose(rm.window))
     {   
         double angle = counter / 300.0 * 2 * M_PI;
@@ -436,26 +459,31 @@ int main()
         rm.camera = glm::vec3( sin(angle*0.2), rm.camera.y, cos(angle*0.2));
         rm.SetView();
 
-        glClearColor(01.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(01.0f, 0.2f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader, rm.fQ_vao);
+        glBindVertexArray(rm.fQ_vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL); //testing
+
+
+        
+        rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader, rm.fQ_vao, rm.fQ_texture, rm.fQ_lcoeloc, rm.fQ_varloc);
         glBindVertexArray(rm.fQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-        
-        rm.SetUpQuadShader(leftQuad_vert_shader, leftQuad_frag_shader, rm.lQ_vao);
-        glBindTexture(GL_TEXTURE_2D, rm.texture1);
+        /*
+        rm.SetUpQuadShader(leftQuad_vert_shader, leftQuad_frag_shader, rm.lQ_vao, rm.lQ_texture, rm.lQ_lcoeloc, rm.lQ_varloc);
+        glBindTexture(GL_TEXTURE_2D, rm.lQ_texture);
         glBindVertexArray(rm.lQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-
-        rm.SetUpQuadShader(backQuad_vert_shader, backQuad_frag_shader, rm.bQ_vao);
+        
+        rm.SetUpQuadShader(backQuad_vert_shader, backQuad_frag_shader, rm.bQ_vao, rm.bQ_texture, rm.bQ_lcoeloc, rm.bQ_varloc);
         glBindVertexArray(rm.bQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-
-        rm.SetUpQuadShader(rightQuad_vert_shader, rightQuad_frag_shader, rm.rQ_vao);
+        
+        rm.SetUpQuadShader(rightQuad_vert_shader, rightQuad_frag_shader, rm.rQ_vao, rm.rQ_texture, rm.rQ_lcoeloc, rm.rQ_varloc);
         glBindVertexArray(rm.rQ_vao);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);*/
+        
         glfwPollEvents();
         glfwSwapBuffers(rm.window);
     }
