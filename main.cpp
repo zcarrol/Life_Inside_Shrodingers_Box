@@ -23,6 +23,9 @@ using     std::cerr;
 #include <glm/glm/gtc/type_ptr.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 GLFWwindow* SetUpWindow();
 GLuint SetUpQuad();
 
@@ -35,7 +38,7 @@ class RenderManager
 public:
     RenderManager();
     void   SetView();
-    void   SetUpQuadShader(const char*, const char*);
+    void   SetUpQuadShader(const char*, const char*, GLuint);
     GLuint SetUpQuad(float*, int*, float*, float*);
     void   ModifyFqVar();
     void   ModifyLqVar();
@@ -50,6 +53,7 @@ public:
     GLuint camloc;
     GLuint ldirloc;
     glm::mat4 Projection;
+    GLuint texture1;
 
     //front quad data
     GLuint fQ_vao;
@@ -97,12 +101,17 @@ RenderManager::RenderManager()
 
     mvp = Projection * View * Model;
 
+
+
 }
 
-void RenderManager::SetUpQuadShader(const char* v, const char* f)
+void RenderManager::SetUpQuadShader(const char* v, const char* f, GLuint vao)
 {
     const char* vertex_shader = v;
     const char* fragment_shader = f;
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture1);
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vertex_shader, NULL); //this tells gl that vertex_shader is the source and vs is where it goes
@@ -132,6 +141,7 @@ void RenderManager::SetUpQuadShader(const char* v, const char* f)
 
     glUseProgram(shader_programme);
 
+
     GLuint mvploc = glGetUniformLocation(shader_programme, "MVP");
 
     //send transformation to the currently bound shader
@@ -145,7 +155,7 @@ void RenderManager::SetUpQuadShader(const char* v, const char* f)
     ldirloc = glGetUniformLocation(shader_programme, "lightdir");
     glUniform3fv(ldirloc, 1, &lightdir[0]);
 
-    glm::vec4 lightcoeff(0.2, 0.4, 0.6, 50);
+    glm::vec4 lightcoeff(0.8, 0.4, 0.6, 50);
     fQ_lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
     glUniform4fv(fQ_lcoeloc, 1, &lightcoeff[0]);
 
@@ -163,6 +173,40 @@ void RenderManager::SetUpQuadShader(const char* v, const char* f)
 
     else if (vertex_shader = rightQuad_vert_shader)
         ModifyRqVar();
+}
+
+GLuint GenerateTexture()
+{
+    // load and generate the texture
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glActiveTexture(GL_TEXTURE0);
+    //how many textures and where we want to store them
+    glBindTexture(GL_TEXTURE_2D, texture);
+    //texture wrapping
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+ 
+    //texture filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    int width, height, nrChannels;
+    //load image data
+    unsigned char* data = stbi_load("Libraries/include/lightning.png", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        //after this call the currently bound texture object now has the texture image attached to it
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        cout << "Failed to load texture" << endl;
+    }
+    stbi_image_free(data);
+    
+    return texture;
 }
 
 void RenderManager::ModifyRqVar()
@@ -322,7 +366,6 @@ GLFWwindow* SetUpWindow()
 GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colors, float* tri_normals)
 {
 
-
     GLuint points_vbo = 0;
     glGenBuffers(1, &points_vbo);//get handle
     glBindBuffer(GL_ARRAY_BUFFER, points_vbo);//what type of data points works on GL_ARRAY_BUFFER type
@@ -337,6 +380,7 @@ GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colo
     glGenBuffers(1, &colors_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, colors_vbo);
     glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), &colors[0], GL_STATIC_DRAW);
+
 
     GLuint indices_vbo = 0;
     glGenBuffers(1, &indices_vbo);
@@ -357,11 +401,16 @@ GLuint RenderManager::SetUpQuad(float* tri_points, int* tri_indices, float* colo
     glBindBuffer(GL_ARRAY_BUFFER, colors_vbo);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
+    texture1 = GenerateTexture();
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_vbo);
 
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
+    glEnableVertexAttribArray(3);
+
 
     return vao;
 
@@ -387,22 +436,23 @@ int main()
         rm.camera = glm::vec3( sin(angle*0.2), rm.camera.y, cos(angle*0.2));
         rm.SetView();
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(01.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader);
+        rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader, rm.fQ_vao);
         glBindVertexArray(rm.fQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
         
-        rm.SetUpQuadShader(leftQuad_vert_shader, leftQuad_frag_shader);
+        rm.SetUpQuadShader(leftQuad_vert_shader, leftQuad_frag_shader, rm.lQ_vao);
+        glBindTexture(GL_TEXTURE_2D, rm.texture1);
         glBindVertexArray(rm.lQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
-        rm.SetUpQuadShader(backQuad_vert_shader, backQuad_frag_shader);
+        rm.SetUpQuadShader(backQuad_vert_shader, backQuad_frag_shader, rm.bQ_vao);
         glBindVertexArray(rm.bQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
-        rm.SetUpQuadShader(rightQuad_vert_shader, rightQuad_frag_shader);
+        rm.SetUpQuadShader(rightQuad_vert_shader, rightQuad_frag_shader, rm.rQ_vao);
         glBindVertexArray(rm.rQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
