@@ -18,6 +18,8 @@ const char* frontQuad_vert_shader =
 "out vec2 tex_Coord;\n"
 "void main(){\n"
 "   vec4 position = vec4(vertex_position, 1.0);\n"
+"	if(vertex_color.x == 0 && vertex_color.y == 0 && vertex_color.z ==0)"
+"		position.x += var;\n"
 "   gl_Position = MVP*position;\n"
 "   color = vertex_color;\n"
 
@@ -27,7 +29,7 @@ const char* frontQuad_vert_shader =
 "   shading_amount += lightcoeff.y * max(0.0, dot(lightdir, norm_v));\n"
 "   vec3 R = normalize(2.0*dot(lightdir, norm_v) * norm_v - lightdir);\n"
 "   vec3 viewDir = normalize(vertex_position - cameraloc);\n"
-"   shading_amount += lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
+"   shading_amount += var*lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
 "   var_to_fs = var;\n"
 "	tex_Coord = texCoord;\n"
 "}\n";
@@ -43,12 +45,14 @@ const char* frontQuad_frag_shader =
 "in vec2 tex_Coord;\n"
 "out vec4 frag_color;\n"
 "void main(){\n"
-"  frag_color = texture(ourTexture, tex_Coord);\n"
-
+"  vec2 txMod = vec2(sqrt(0.25-pow(tex_Coord.y-0.5,2))*var_to_fs*.2, sqrt(0.5-pow(tex_Coord.x-0.5,2))*var_to_fs*0.2);"//vec2(sin(tex_Coord.y*var_to_fs), cos(tex_Coord.x*var_to_fs));\n"
+"  frag_color = texture(ourTexture, txMod);\n"
 "  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
-"  frag_color.y = min(1.0, shading_amount*frag_color.y); \n"
+"  frag_color.y = min(1.0, var_to_fs*0.2*shading_amount*frag_color.y); \n"
 "  frag_color.z = min(1.0, shading_amount*frag_color.z);\n" 
-"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
+"  frag_color.w = 0.1;"//min(1.0, shading_amount*frag_color.w);\n"
+//"  if(frag_color.x <= 0.2 && frag_color.y <= 0.2 && frag_color.z <= 0.2)\n"
+//"	frag_color = vec4(0.0f, 0.0f, 0.5f, 1.0f);\n"
 "}\n";
 
 const char* leftQuad_vert_shader =
@@ -63,11 +67,13 @@ const char* leftQuad_vert_shader =
 "uniform vec3 lightdir;\n"
 "uniform vec4 lightcoeff;\n"
 "out float var_to_fs;\n"
-"out vec2 tex_Coord;"
 "out float shading_amount;\n"
 "out vec3 color;\n"
+"out vec2 tex_Coord;\n"
 "void main(){\n"
 "   vec4 position = vec4(vertex_position, 1.0);\n"
+"	if(vertex_color.x == 0 && vertex_color.y == 0 && vertex_color.z ==0)"
+"		position.x += var;\n"
 "   gl_Position = MVP*position;\n"
 "   color = vertex_color;\n"
 
@@ -77,7 +83,7 @@ const char* leftQuad_vert_shader =
 "   shading_amount += lightcoeff.y * max(0.0, dot(lightdir, norm_v));\n"
 "   vec3 R = normalize(2.0*dot(lightdir, norm_v) * norm_v - lightdir);\n"
 "   vec3 viewDir = normalize(vertex_position - cameraloc);\n"
-"   shading_amount += lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
+"   shading_amount += var*lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
 "   var_to_fs = var;\n"
 "	tex_Coord = texCoord;\n"
 "}\n";
@@ -93,12 +99,14 @@ const char* leftQuad_frag_shader =
 "in vec2 tex_Coord;\n"
 "out vec4 frag_color;\n"
 "void main(){\n"
-"  frag_color = texture(ourTexture, tex_Coord)*shading_amount;\n"
-
+"  vec2 txMod = vec2(sqrt(0.25-pow(tex_Coord.y-0.5,2))*var_to_fs*.2, sqrt(0.5-pow(tex_Coord.x-0.5,2))*var_to_fs*0.2);"//vec2(sin(tex_Coord.y*var_to_fs), cos(tex_Coord.x*var_to_fs));\n"
+"  frag_color = texture(ourTexture, txMod);\n"
 "  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
-"  frag_color.y = min(1.0, shading_amount*frag_color.y); \n"
-"  frag_color.z = min(1.0, shading_amount*frag_color.z);\n"
-"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
+"  frag_color.y = min(1.0, var_to_fs*shading_amount*frag_color.y); \n"
+"  frag_color.z = min(1.0, var_to_fs*shading_amount*frag_color.z);\n"
+"  frag_color.w = 0.1;"//min(1.0, shading_amount*frag_color.w);\n"
+//"  if(frag_color.x <= 0.2 && frag_color.y <= 0.2 && frag_color.z <= 0.2)\n"
+//"	frag_color = vec4(0.0f, 0.0f, 0.5f, 1.0f);\n"
 "}\n";
 
 
@@ -114,11 +122,13 @@ const char* backQuad_vert_shader =
 "uniform vec3 lightdir;\n"
 "uniform vec4 lightcoeff;\n"
 "out float var_to_fs;\n"
-"out vec2 tex_Coord;\n"
 "out float shading_amount;\n"
 "out vec3 color;\n"
+"out vec2 tex_Coord;\n"
 "void main(){\n"
 "   vec4 position = vec4(vertex_position, 1.0);\n"
+"	if(vertex_color.x == 0 && vertex_color.y == 0 && vertex_color.z ==0)"
+"		position.x += var;\n"
 "   gl_Position = MVP*position;\n"
 "   color = vertex_color;\n"
 
@@ -128,7 +138,7 @@ const char* backQuad_vert_shader =
 "   shading_amount += lightcoeff.y * max(0.0, dot(lightdir, norm_v));\n"
 "   vec3 R = normalize(2.0*dot(lightdir, norm_v) * norm_v - lightdir);\n"
 "   vec3 viewDir = normalize(vertex_position - cameraloc);\n"
-"   shading_amount += lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
+"   shading_amount += var*lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
 "   var_to_fs = var;\n"
 "	tex_Coord = texCoord;\n"
 "}\n";
@@ -144,13 +154,16 @@ const char* backQuad_frag_shader =
 "in vec2 tex_Coord;\n"
 "out vec4 frag_color;\n"
 "void main(){\n"
-"  frag_color = texture(ourTexture, tex_Coord);\n"
-
-/*"  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
+"  vec2 txMod = vec2(sqrt(0.25-pow(tex_Coord.y-0.5,2))*var_to_fs*.2, sqrt(0.5-pow(tex_Coord.x-0.5,2))*var_to_fs*0.2);"//vec2(sin(tex_Coord.y*var_to_fs), cos(tex_Coord.x*var_to_fs));\n"
+"  frag_color = texture(ourTexture, txMod);\n"
+"  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
 "  frag_color.y = min(1.0, shading_amount*frag_color.y); \n"
-"  frag_color.z = min(1.0, shading_amount*frag_color.z);\n"
-"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"*/
+"  frag_color.z = min(1.0, var_to_fs*0.2*shading_amount*frag_color.z);\n"
+"  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
+//"  if(frag_color.x <= 0.2 && frag_color.y <= 0.2 && frag_color.z <= 0.2)\n"
+//"	frag_color = vec4(0.0f, 0.0f, 0.5f, 1.0f);\n"
 "}\n";
+
 
 const char* rightQuad_vert_shader =
 "#version 400\n"
@@ -163,12 +176,14 @@ const char* rightQuad_vert_shader =
 "uniform vec3 cameraloc;\n"
 "uniform vec3 lightdir;\n"
 "uniform vec4 lightcoeff;\n"
-"out vec2 tex_Coord;\n"
 "out float var_to_fs;\n"
 "out float shading_amount;\n"
 "out vec3 color;\n"
+"out vec2 tex_Coord;\n"
 "void main(){\n"
 "   vec4 position = vec4(vertex_position, 1.0);\n"
+"	if(vertex_color.x == 0 && vertex_color.y == 0 && vertex_color.z ==0)"
+"		position.x += var;\n"
 "   gl_Position = MVP*position;\n"
 "   color = vertex_color;\n"
 
@@ -178,10 +193,11 @@ const char* rightQuad_vert_shader =
 "   shading_amount += lightcoeff.y * max(0.0, dot(lightdir, norm_v));\n"
 "   vec3 R = normalize(2.0*dot(lightdir, norm_v) * norm_v - lightdir);\n"
 "   vec3 viewDir = normalize(vertex_position - cameraloc);\n"
-"   shading_amount += lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
+"   shading_amount += var*lightcoeff.z * pow( max(0.0, dot(viewDir, R)), lightcoeff.w);\n"
 "   var_to_fs = var;\n"
 "	tex_Coord = texCoord;\n"
 "}\n";
+
 
 
 
@@ -194,10 +210,12 @@ const char* rightQuad_frag_shader =
 "in vec2 tex_Coord;\n"
 "out vec4 frag_color;\n"
 "void main(){\n"
-"  frag_color = texture(ourTexture, tex_Coord)*shading_amount;\n"
-
-"  frag_color.x = min(1.0, shading_amount*frag_color.x);\n"
+"  vec2 txMod = vec2(sqrt(0.25-pow(tex_Coord.y-0.5,2))*var_to_fs*.2, sqrt(0.5-pow(tex_Coord.x-0.5,2))*var_to_fs*0.2);"//vec2(sin(tex_Coord.y*var_to_fs), cos(tex_Coord.x*var_to_fs));\n"
+"  frag_color = texture(ourTexture, txMod);\n"
+"  frag_color.x = min(1.0, var_to_fs*0.2*shading_amount*frag_color.x);\n"
 "  frag_color.y = min(1.0, shading_amount*frag_color.y); \n"
-"  frag_color.z = min(1.0, shading_amount*frag_color.z);\n"
+"  frag_color.z = min(1.0, var_to_fs*0.2*shading_amount*frag_color.z);\n"
 "  frag_color.w = min(1.0, shading_amount*frag_color.w);\n"
+//"  if(frag_color.x <= 0.2 && frag_color.y <= 0.2 && frag_color.z <= 0.2)\n"
+//"	frag_color = vec4(0.0f, 0.0f, 0.5f, 1.0f);\n"
 "}\n";

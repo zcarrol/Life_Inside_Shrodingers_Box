@@ -35,13 +35,13 @@ int fQ_tri_indices[] =
 
 };
 
-float fQ_colors[] = { 1.0f, 1.0f, 1.0f,
-                      1.0f, 1.0f, 1.0f,
-                      1.0f, 1.0f, 1.0f,
+float fQ_colors[] = { 1.0f, 1.0f, 1.0f,//1.0f, 0.4f, 0.9f, // bottom right - "Rose pink"
+                       1.0f, 1.0f, 1.0f,//1.0f, 0.5f, 1.0f, // top left - "Orange"
+                      0.0f, 1.0f, 0.0f, // bottom left - "electric green"
 
-                      1.0f, 1.0f, 1.0f,
-                      1.0f, 1.0f, 1.0f,
-                      1.0f, 1.0f, 1.0f
+                       1.0f, 1.0f, 1.0f,//1.0f, 0.5f, 1.0f, //"Orange"
+                      0.0f, 1.0f, 0.0f, // "Electric green"
+                       1.0f, 0.5f, 0.5f// top right
 };
 
 //the vector pointing from each vertex to the origin is just (0,0,0) - vertex
@@ -77,12 +77,23 @@ float lQ_tri_points[] =
 {
      //0.5, -0.5, 0.5, //-z quad tri1
     -0.5, -0.5, -0.5,
-    -0.5, 0.5 , 0.5,
-    -0.5, -0.5, 0.5,
+    -0.5,  0.5,  0.5,
+    -0.5, -0.5,  0.5,
 
     -0.5, -0.5, -0.5,
-    -0.5, 0.5 , 0.5,
-     -0.5,  0.5, -0.5
+    -0.5,  0.5,  0.5,
+    -0.5,  0.5, -0.5
+};
+
+float lQ_tri_texData[] =
+{
+     /*-0.5, -0.5, -0.5,*/   0.0f, 0.0f, //bottom left
+    /*-0.5, 0.5 , 0.5,*/     1.0f, 1.0f, //top right
+    /*-0.5, -0.5, 0.5,*/     1.0f, 0.0f, //bottom right
+
+    /*-0.5, -0.5, -0.5,*/    0.0f, 0.0f,
+    /*-0.5, 0.5 , 0.5,*/     1.0f, 1.0f,
+    /* -0.5,  0.5, -0.5*/    0.0f, 1.0f, //top left
 };
 
 int lQ_tri_indices[] =
@@ -96,7 +107,8 @@ int lQ_tri_indices[] =
 
 };
 
-float lQ_colors[] = { 1.0f, 1.0f, 1.0f,
+float lQ_colors[] = { 
+                   1.0f, 1.0f, 1.0f,
                    1.0f, 1.0f, 1.0f,
                    1.0f, 1.0f, 1.0f,
 
@@ -154,9 +166,9 @@ float bQ_colors[] = { 1.0f, 1.0f, 1.0f,
 
 float bQ_tri_normals[18]
 {
-    0.5, -0.5, -0.5,
+     0.5, -0.5, -0.5,
     -0.5, 0.5, -0.5,
-   0.5, 0.5,   -0.5,
+     0.5, 0.5,   -0.5,
 
      0.5, -0.5, -0.5,
     -0.5,  0.5, -0.5,
