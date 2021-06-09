@@ -31,7 +31,8 @@ GLFWwindow* SetUpWindow();
 const char* lightning = "Libraries/include/lightning.png";
 const char* galaxy = "Libraries/include/galaxyResize.png";
 const char* waterRipple = "Libraries/include/waterRipple.png";
-const char* kib = "Libraries/include/trueKibsR.jpg";
+const char* lightning2 = "Libraries/include/blueLightning.jpg";
+const char* iceCrystal = "Libraries/include/iceCrystal3.jpg";
 //void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 
@@ -53,6 +54,7 @@ public:
     glm::vec3 origin;
     glm::vec3 up;
     glm::vec3 camera;
+    glm::vec3 lightdir;
     glm::mat4 mvp;
     GLuint camloc;
     GLuint ldirloc;
@@ -101,7 +103,8 @@ RenderManager::RenderManager()
 
     origin = glm::vec3(0, 0, 0);
     up =     glm::vec3(0, 1, 0);
-    camera = glm::vec3(0, 2, 0);
+    camera = glm::vec3(0, 0, 0);
+    lightdir = glm::normalize(origin - camera);
 
     rQ_texture = 0;
     lQ_texture = 0;
@@ -113,7 +116,7 @@ RenderManager::RenderManager()
 
 
     lr_image = lightning;
-    fb_image = galaxy;
+    fb_image = lightning2;
 
     glGenTextures(1, &textures[0]);
 
@@ -196,11 +199,11 @@ void RenderManager::SetUpQuadShader(const char* v, const char* f, GLuint vao, GL
     camloc = glGetUniformLocation(shader_programme, "cameraloc");
     glUniform3fv(camloc, 1, &camera[0]);
 
-    glm::vec3 lightdir = glm::normalize(origin - camera);
+    //glm::vec3 lightdir = glm::normalize(origin - camera);
     ldirloc = glGetUniformLocation(shader_programme, "lightdir");
     glUniform3fv(ldirloc, 1, &lightdir[0]);
 
-    glm::vec4 lightcoeff(0.5, 0.4, 0.8, 70);
+    glm::vec4 lightcoeff(0.5, 0.7, 0.9, 90);
     lcoeloc = glGetUniformLocation(shader_programme, "lightcoeff");
     glUniform4fv(lcoeloc, 1, &lightcoeff[0]);
 
@@ -444,6 +447,9 @@ GLFWwindow* SetUpWindow()
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     return window;
 
 }
@@ -514,37 +520,38 @@ int main()
 
     int counter = 0;
 
+    double piDiv = M_PI/1.2;
 
     while (!glfwWindowShouldClose(rm.window))
     {   
         double angle = counter / 300.0 * 2 * M_PI;
         counter++;
 
-        rm.camera = glm::vec3(sin(angle*0.1), cos(angle*0.1), cos(angle*0.1));
+        //glm::vec3 cameraMovement = glm::vec3(sin(angle * 0.1), rm.camera.y, cos(angle * 0.1));
+
+        //rm.up = glm::vec3(1, 0, 0);
+        rm.lightdir = glm::vec3(0,0,0) - glm::vec3(sin((angle * 0.1)+piDiv), rm.camera.y, cos((angle * 0.1)+piDiv));//glm::vec3(-sin(angle*0.3), rm.lightdir.y, -cos(angle*0.3));
+        rm.camera   = glm::vec3(sin(angle * 0.1), rm.camera.y, cos(angle * 0.1));
         rm.SetView();
 
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.0,0.0,0.0,1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-      //  glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, rm.textures[0]);
         rm.SetUpQuadShader(frontQuad_vert_shader, frontQuad_frag_shader, rm.fQ_vao, rm.fQ_lcoeloc, rm.fQ_varloc);
         glBindVertexArray(rm.fQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
         
-       // glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, rm.textures[1]);
         rm.SetUpQuadShader(backQuad_vert_shader, backQuad_frag_shader, rm.bQ_vao, rm.bQ_lcoeloc, rm.bQ_varloc);
         glBindVertexArray(rm.bQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
         
-        //glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, rm.textures[2]);
         rm.SetUpQuadShader(leftQuad_vert_shader, leftQuad_frag_shader, rm.lQ_vao, rm.lQ_lcoeloc, rm.lQ_varloc);
         glBindVertexArray(rm.lQ_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
         
-        //glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, rm.textures[3]);
         rm.SetUpQuadShader(rightQuad_vert_shader, rightQuad_frag_shader, rm.rQ_vao, rm.rQ_lcoeloc, rm.rQ_varloc);
         glBindVertexArray(rm.rQ_vao);

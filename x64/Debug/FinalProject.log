@@ -1,10 +1,10 @@
 ﻿  main.cpp
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(742,20): warning C4305: '+=': truncation from 'double' to 'float'
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(749,20): warning C4305: '-=': truncation from 'double' to 'float'
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(764,20): warning C4305: '+=': truncation from 'double' to 'float'
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(771,20): warning C4305: '-=': truncation from 'double' to 'float'
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(787,20): warning C4305: '+=': truncation from 'double' to 'float'
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(794,20): warning C4305: '-=': truncation from 'double' to 'float'
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(818,20): warning C4305: '+=': truncation from 'double' to 'float'
-C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(825,20): warning C4305: '-=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(745,20): warning C4305: '+=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(752,20): warning C4305: '-=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(767,20): warning C4305: '+=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(774,20): warning C4305: '-=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(790,20): warning C4305: '+=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(797,20): warning C4305: '-=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(821,20): warning C4305: '+=': truncation from 'double' to 'float'
+C:\GL\FinalProject\Libraries\include\glm\glm\gtx\string_cast.inl(828,20): warning C4305: '-=': truncation from 'double' to 'float'
   FinalProject.vcxproj -> C:\GL\FinalProject\x64\Debug\FinalProject.exe
